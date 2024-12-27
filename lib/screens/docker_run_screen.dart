@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:process_run/process_run.dart';
 import 'package:tail_scale_example/core/constants/app_commands.dart';
+import 'package:tail_scale_example/core/constants/app_strings.dart';
 import 'package:tail_scale_example/core/enum/app_auto_install_status_enum.dart';
 
 class DockerRunScreen extends StatefulWidget {
@@ -35,11 +36,18 @@ class _DockerRunScreenState extends State<DockerRunScreen> {
         });
         await _installDocker();
       }
-    } catch (e) {
-      setState(() {
-        status = AppAutoInstallStatusEnum.unknownError;
-        error = "Error checking Docker installation: $e";
-      });
+    } on ShellException catch (e) {
+      if (e.result?.stderr.contains(AppStrings.errorCannotFindDocker)) {
+        setState(() {
+          status = AppAutoInstallStatusEnum.notInstall;
+        });
+        await _installDocker();
+      } else {
+        setState(() {
+          status = AppAutoInstallStatusEnum.unknownError;
+          error = "Error checking Docker installation: ${e.result?.stderr}";
+        });
+      }
     }
   }
 
@@ -66,7 +74,9 @@ class _DockerRunScreenState extends State<DockerRunScreen> {
 
   _installDocker() async {
     try {
-      final result = await run(AppCommands.installDocker);
+      const installDockerPath = r'assets\data\install_docker.bat';
+
+      final result = await run(installDockerPath);
 
       if (result.first.exitCode == 0) {
         setState(() {
